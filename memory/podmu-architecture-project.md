@@ -13,7 +13,9 @@ As of 2026-05-29, the **V1 spec set is complete** in `docs/` (11 specs, see [CLA
 
 An external senior-architect review (`Feedback.md`, 2026-05-29) was triaged. Most points were already in "Deferred" notes; three were genuine: (1) **HITL/Governance gap** → addressed by new spec `docs/specs/governance-hitl.md`; (2) **context smuggling** — a real inconsistency, fixed: `definition_version` now pins the WHOLE Definition projection (graph + identity + goals + prompts + tools) atomically, not just the graph (workflow §14, agent §6); (3) **resume model-shift** — fixed via per-run model pinning (agent §8).
 
-**Review-driven spec backlog: ALL DONE.** Specs 11–14 written: governance-hitl, kernel-fencing, state-plane-governance, marketplace-tool-trust (`docs/specs/`). Marketplace centerpiece = brokered egress (untrusted MCP servers never hold credentials; trusted host makes the authenticated call). Full set is now 14 specs. Next natural step: begin implementation (start with Pod manifest + Bundle loader/validator in Go, the dependency-root) OR the strategic "self-optimizing behavior" spec.
+**Review-driven spec backlog: ALL DONE.** Specs 11–14: governance-hitl, kernel-fencing, state-plane-governance, marketplace-tool-trust. Full set = 14 specs.
+
+**IMPLEMENTATION STARTED (2026-05-30).** Go module `github.com/kliqulink/podmu_ai`, Go 1.26, dep = yaml.v3 only. Built the dependency-root (spec 1): `pod/` package = manifest types + bundle loader/validator + ULID ids + runtime compatibility handshake; `cmd/podctl/` CLI (validate/info/id); 23 tests green; sample bundle in `pod/testdata/`. Build/test/run commands now in CLAUDE.md. Next build targets (bottom-up): event envelope + JetStream event-log writer (spec 4) → workflow instance/replay (spec 5), or fill out Bundle.Write/round-trip. Strategic "self-optimizing behavior" spec still unwritten.
 
 **Two cross-cutting concerns still scattered as "Deferred" notes:**
 - **Data governance / PII** — right-to-erasure vs immutable log (crypto-shredding); marketplace export sanitization. memory §14, tool-runtime §14, frontend §13. Legally load-bearing. (Folds into State-Plane Governance spec above.)

@@ -1,0 +1,7 @@
+deployment: storefront
+kind: frontend
+domains:
+  - nur-atelier.podmu.app
+edge:
+  ssr: auto
+  cache: cdn

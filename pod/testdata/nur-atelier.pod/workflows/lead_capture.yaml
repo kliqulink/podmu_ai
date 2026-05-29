@@ -1,0 +1,12 @@
+workflow: lead_capture
+version: 1
+trigger:
+  on: lead.created
+  correlation_key: "{{ event.payload.phone_ref }}"
+steps:
+  - id: analyze
+    type: agent
+    agent: strategist
+    output: analysis
+  - id: done
+    type: end

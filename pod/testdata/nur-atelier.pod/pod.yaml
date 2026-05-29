@@ -1,0 +1,62 @@
+apiVersion: podmu.dev/v1
+kind: Pod
+
+metadata:
+  id: pod_01HXYZA8K3QF6T7N9V2BCD4EFG
+  slug: nur-atelier
+  owner_id: usr_alice
+  created_at: 2026-05-29T00:00:00Z
+  lineage:
+    parent_pod_id: null
+    forked_from_version: null
+  labels:
+    industry: fashion
+    channel: whatsapp
+
+spec:
+  pod_version: 1
+  runtime:
+    min_version: "1.0"
+
+  identity:
+    brand: Nur Atelier
+    niche: Muslim Fashion
+    audience:
+      age_range: "25-35"
+      gender: female
+    positioning: premium_modest_wear
+    tone: elegant
+    goals:
+      - increase_whatsapp_sales
+      - improve_repeat_orders
+
+  agents:
+    - ref: agents/strategist.yaml
+    - ref: agents/marketer.yaml
+    - ref: agents/closer.yaml
+
+  workflows:
+    - ref: workflows/lead_capture.yaml
+    - ref: workflows/wa_followup.yaml
+
+  tools:
+    - name: whatsapp
+      provider: whatsapp_cloud
+      credentials_ref: secret://pod/nur-atelier/whatsapp
+    - name: payments
+      provider: xendit
+      credentials_ref: secret://pod/nur-atelier/xendit
+
+  memory:
+    stores: [short_term, long_term, vector, summarized, event]
+
+  deployments:
+    - kind: frontend
+      ref: deployments/frontend.yaml
+
+  permissions:
+    tool_scopes:
+      whatsapp: [send_message, read_message]
+      payments: [create_invoice]
+    spend_limits:
+      ads_monthly_cap_usd: 0

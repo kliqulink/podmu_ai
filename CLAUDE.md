@@ -6,7 +6,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-This repository is in **architecture/pre-implementation phase**. The vision is in `Goals.md`; the formal architecture is in `docs/` (read these before designing or coding). No application code, build system, or dependency manifests exist yet.
+The vision is in `Goals.md`; the formal V1 architecture is in `docs/` (read
+before designing or coding). **Implementation has begun** — Go module
+`github.com/kliqulink/podmu_ai`, starting from the dependency-root: the Pod
+manifest + Bundle loader/validator (spec 1).
+
+## Building & Running
+
+Go 1.26+. Only dependency is `gopkg.in/yaml.v3`.
+
+```bash
+go build ./...                              # build all
+go test ./...                               # run tests
+go test ./pod -run TestLoad -v              # a single test/group
+go vet ./... && gofmt -l pod cmd            # vet + format check (empty = clean)
+
+go run ./cmd/podctl validate <bundle-dir>   # load+validate a .pod bundle (+ compatibility)
+go run ./cmd/podctl info     <bundle-dir>   # summarize a bundle
+go run ./cmd/podctl id                      # generate a fresh Pod id (ULID)
+```
+
+### Code layout
+
+- `pod/` — the Pod package: `manifest.go` (pod.yaml types), `bundle.go`
+  (load + ref-resolution + thick/thin), `validate.go` (V1 rules: ULID ids,
+  slugs, **no inlined secrets**, ref-escape, known memory stores),
+  `version.go` (the runtime compatibility handshake, pod-spec §9.2),
+  `id.go` (ULID generation/validation). Sample bundle in `pod/testdata/`.
+- `cmd/podctl/` — CLI over the package.
+
+Conventions: strict YAML decoding (unknown fields error); validation returns
+`ValidationErrors` (all problems at once, not first-only); a Bundle is inert —
+loading never executes anything (pod-spec §10).
+
+## Design Specs (read in order)
 
 ## Design Specs (read in order)
 

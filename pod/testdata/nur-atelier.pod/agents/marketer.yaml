@@ -1,0 +1,4 @@
+agent: marketer
+role: "Content & campaign marketer"
+model: claude-sonnet-4-6
+prompt: prompts/marketer.system.md

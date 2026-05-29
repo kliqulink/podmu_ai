@@ -1,0 +1,10 @@
+workflow: wa_followup
+version: 1
+trigger:
+  on: followup.due
+steps:
+  - id: send
+    type: tool
+    tool: whatsapp.send_message
+  - id: done
+    type: end

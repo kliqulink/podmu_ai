@@ -1,0 +1,6 @@
+agent: closer
+role: "WhatsApp sales closer"
+model: claude-sonnet-4-6
+prompt: prompts/closer.system.md
+tools:
+  - whatsapp.send_message

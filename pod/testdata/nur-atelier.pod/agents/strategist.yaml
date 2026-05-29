@@ -1,0 +1,4 @@
+agent: strategist
+role: "Business strategist"
+model: claude-opus-4-8
+prompt: prompts/strategist.system.md
