@@ -15,7 +15,12 @@ An external senior-architect review (`Feedback.md`, 2026-05-29) was triaged. Mos
 
 **Review-driven spec backlog: ALL DONE.** Specs 11–14: governance-hitl, kernel-fencing, state-plane-governance, marketplace-tool-trust. Full set = 14 specs.
 
-**IMPLEMENTATION STARTED (2026-05-30).** Go module `github.com/kliqulink/podmu_ai`, Go 1.26, dep = yaml.v3 only. Built the dependency-root (spec 1): `pod/` package = manifest types + bundle loader/validator + ULID ids + runtime compatibility handshake; `cmd/podctl/` CLI (validate/info/id); 23 tests green; sample bundle in `pod/testdata/`. Build/test/run commands now in CLAUDE.md. Next build targets (bottom-up): event envelope + JetStream event-log writer (spec 4) → workflow instance/replay (spec 5), or fill out Bundle.Write/round-trip. Strategic "self-optimizing behavior" spec still unwritten.
+**IMPLEMENTATION STARTED (2026-05-30).** Go module `github.com/kliqulink/podmu_ai`, Go 1.26, dep = yaml.v3 only.
+- spec 1 DONE: `pod/` = manifest types + bundle loader/validator + runtime compatibility handshake; `cmd/podctl/` CLI (validate/info/id); sample bundle in `pod/testdata/`.
+- ULID logic factored into `internal/ulid/` (shared by pod_ and event_ ids).
+- spec 4 (event log) IN PROGRESS: `event/` = `Envelope` (naming/category rules, causal-chain via New/Caused) + `EventLog` interface + `MemLog` in-memory impl (single-writer monotonic sequence, append-dedup by event_id, ReadFrom replay). Production EventLog = per-Pod NATS JetStream stream behind same interface (NOT yet built — needs nats.go dep + running server; deferred).
+- All tests green (pod, event, ulid). Note: `-race` unavailable here (no gcc/cgo on this Windows box) — MemLog is mutex-guarded, concurrency test passes.
+Next build targets: JetStream-backed EventLog (real infra); EffectJournal index (lookup recorded effect by effect_origin, runtime §8); workflow instance/replay (spec 5). Strategic "self-optimizing behavior" spec still unwritten.
 
 **Two cross-cutting concerns still scattered as "Deferred" notes:**
 - **Data governance / PII** — right-to-erasure vs immutable log (crypto-shredding); marketplace export sanitization. memory §14, tool-runtime §14, frontend §13. Legally load-bearing. (Folds into State-Plane Governance spec above.)

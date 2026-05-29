@@ -32,12 +32,21 @@ go run ./cmd/podctl id                      # generate a fresh Pod id (ULID)
   (load + ref-resolution + thick/thin), `validate.go` (V1 rules: ULID ids,
   slugs, **no inlined secrets**, ref-escape, known memory stores),
   `version.go` (the runtime compatibility handshake, pod-spec §9.2),
-  `id.go` (ULID generation/validation). Sample bundle in `pod/testdata/`.
-- `cmd/podctl/` — CLI over the package.
+  `id.go` (Pod ids). Sample bundle in `pod/testdata/`.
+- `event/` — the event log (spec 4): `envelope.go` (the event Envelope,
+  naming/category rules, causal-chain construction via `New`/`Caused`),
+  `log.go` (the `EventLog` interface + `MemLog`, an in-memory reference impl
+  enforcing single-writer monotonic sequence, append-dedup by `event_id`, and
+  `ReadFrom` replay). Production `EventLog` will be a per-Pod NATS JetStream
+  stream behind the same interface (event §6, §13).
+- `internal/ulid/` — shared prefixed-ULID generation/validation used by both
+  `pod_` and `event_` ids (domain-model §7).
+- `cmd/podctl/` — CLI over the pod package.
 
 Conventions: strict YAML decoding (unknown fields error); validation returns
 `ValidationErrors` (all problems at once, not first-only); a Bundle is inert —
-loading never executes anything (pod-spec §10).
+loading never executes anything (pod-spec §10); `event_id` is identity/dedup,
+`sequence` is ordering/replay-cursor — kept distinct (event §4).
 
 ## Design Specs (read in order)
 
