@@ -111,16 +111,18 @@ Consequences of Site Model being Definition:
 The frontend has two strictly separated paths. This split is what *enforces*
 §1:
 
-```text
-  ┌─────────────────── READ PATH (rendering) ───────────────────┐
-  │  browser GET ──► Renderer reads { Site Model + projections } │  pure, fast, cacheable
-  │             ◄── HTML/assets                                  │  NO journaling, NO core call
-  └──────────────────────────────────────────────────────────────┘
-
-  ┌─────────────────── WRITE PATH (interaction) ────────────────┐
-  │  visitor action ──► ingress event (tool-runtime §6) ──► LOG  │  enters the deterministic core
-  │  (form submit, chat msg, checkout)                            │  workflows react asynchronously
-  └──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph READ["READ PATH (rendering) — pure, fast, cacheable; NO journaling, NO core call"]
+        direction LR
+        BG["browser GET"] --> RND["Renderer reads<br/>{ Site Model + projections }"]
+        RND --> HTML["HTML / assets"]
+    end
+    subgraph WRITE["WRITE PATH (interaction) — enters the deterministic core; workflows react async"]
+        direction LR
+        VA["visitor action<br/>(form submit, chat msg, checkout)"] --> ING["ingress event (tool §6)"]
+        ING --> LOG["LOG"]
+    end
 ```
 
 - **Rendering is a read-only projection.** It reads the Site Model and the
@@ -180,14 +182,12 @@ page renders a sensible default — never blocks.)
 A visitor chatting with a `closer` agent on the site, in real time, composes the
 two paths and the channel model:
 
-```text
-  visitor types ──► message.received (ingress, web channel, §6)
-                       │
-                       ▼  deterministic core
-                 workflow → closer agent (journaled, agent §3) → reply
-                       │
-                       ▼  egress: web channel push
-  browser ◄── reply delivered over a live push channel (WebSocket/SSE)
+```mermaid
+flowchart TD
+    V["visitor types"] -->|ingress, web channel §6| MR["message.received"]
+    MR --> CORE["deterministic core:<br/>workflow → closer agent (journaled, agent §3) → reply"]
+    CORE -->|egress: web channel push| PUSH["reply delivered over a live<br/>push channel (WebSocket/SSE)"]
+    PUSH --> B["browser"]
 ```
 
 - Inbound is an ingress event; the agent runs in the core (journaled); the reply

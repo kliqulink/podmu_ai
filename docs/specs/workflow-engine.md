@@ -242,16 +242,15 @@ outside world (event-system §9).
 
 ## 10. Instance Lifecycle
 
-```text
-  trigger matches ──► [ running ] ──advances per event/effect──► [ completed ]
-                          │  ▲                                        (terminal node)
-              wait/timer  │  │ resume (event or timer fires)
-                          ▼  │
-                       [ waiting ]
-                          │
-            unrecoverable │ error (after retries/error edges exhausted)
-                          ▼
-                       [ faulted ] ──► emits workflow.failed (event-system §2)
+```mermaid
+stateDiagram-v2
+    [*] --> running: trigger matches
+    running --> completed: advances to terminal node
+    running --> waiting: wait / timer
+    waiting --> running: resume (event or timer fires)
+    running --> faulted: unrecoverable error<br/>(retries + error edges exhausted)
+    faulted --> [*]: emits workflow.failed (event §2)
+    completed --> [*]
 ```
 
 `waiting` is the steady state for long-running business processes (a follow-up
@@ -322,6 +321,14 @@ event-system §11); only **new** instances use a reloaded definition. The engine
 keeps the pinned definition available for as long as instances on it survive.
 This prevents redefining a graph beneath a long-running instance — essential
 when instances can live for weeks.
+
+**The pin is over the *entire Definition projection*, not just the graph.** A
+`definition_version` pins the workflow graph **and** the identity, goals,
+prompts, and tool bindings that any step (including invoked agents, agent §6)
+sees — atomically. Pinning the graph alone would let a long-running instance
+drive an agent loaded with *current* identity/goals while executing an *old*
+plan ("new goals on an old plan"), producing incoherent behavior. The Definition
+is therefore pinned as one immutable snapshot per instance, never per-layer.
 
 ---
 

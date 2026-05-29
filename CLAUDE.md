@@ -23,6 +23,7 @@ prior ones; read in this order:
 8. `docs/specs/tool-runtime-mcp.md` — bidirectional edge; idempotency; ingress contract
 9. `docs/specs/frontend-renderer.md` — projection; render-read / interact-emit; a channel
 10. `docs/specs/deployment.md` — materialization + the Stage 1→2→3 evolution seam
+11. `docs/specs/governance-hitl.md` — cross-cutting: hard policy constraints + human intervention (Governor & HITL)
 
 **The one principle threading every layer:** *nondeterminism is pushed to the
 edge and journaled; everything else is a deterministic projection of an
@@ -60,14 +61,15 @@ A **Pod** is a *Portable Autonomous Business Unit* — a stateful package that r
 
 ## System Architecture
 
-```
-Podmu Kernel (AI Operating Layer)
-    │
-    ├─ Pod A ─ Agents ─ MCP tools
-    ├─ Pod B ─ Agents ─ MCP tools
-    └─ Pod C ─ Agents ─ MCP tools
-              │
-    frontend/backend/db/runtime/workflows
+```mermaid
+flowchart TB
+    K["Podmu Kernel (AI Operating Layer)"]
+    K --> A["Pod A — Agents — MCP tools"]
+    K --> B["Pod B — Agents — MCP tools"]
+    K --> C["Pod C — Agents — MCP tools"]
+    A --> INFRA["frontend / backend / db / runtime / workflows"]
+    B --> INFRA
+    C --> INFRA
 ```
 
 **Isolation is by namespace, not by infrastructure.** Every Pod has isolated context, workflow, memory, and agent state — but shares underlying infrastructure (at least in V1).

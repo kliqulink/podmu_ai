@@ -238,16 +238,21 @@ Two fields turn the log into a debuggable causal graph:
 
 The domain-model event-flow example becomes one correlation chain:
 
-```text
-correlation_id = C
-  lead.created            (cause: external)          → C
-  lead.analyzed           (cause: lead.created)       → C
-  customer.upserted       (cause: lead.analyzed)      → C
-  agent.responded         (cause: customer.upserted)  → C   [effect]
-  message.sent            (cause: agent.responded)    → C   [effect]
-  offer.generated         (cause: message.sent)       → C   [effect]
-  ...
+```mermaid
+flowchart TD
+    ext([external]) --> A["lead.created"]
+    A --> B["lead.analyzed"]
+    B --> C["customer.upserted"]
+    C --> D["agent.responded — effect"]
+    D --> E["message.sent — effect"]
+    E --> F["offer.generated — effect"]
+    F --> G[...]
+    classDef chain fill:#eef,stroke:#557;
+    class A,B,C,D,E,F chain;
 ```
+
+*All events above share `correlation_id = C`; each edge is a `causation_id`
+link (parent → child).*
 
 No separate tracing system is required for business causality — it is intrinsic
 to the log. (Operational tracing/metrics are a separate, later concern.)

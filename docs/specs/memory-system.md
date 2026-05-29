@@ -91,8 +91,9 @@ A recall feeding an agent's prompt or a workflow decision is a **journaled
 effect** (`memory.read`, agent §10, runtime §8) — because what was retrieved
 shapes a non-deterministic output and must be reproducible on replay.
 
-```text
-recall(store, query, k) ──► retrieved set ──► journaled as memory.read effect
+```mermaid
+flowchart LR
+    R["recall(store, query, k)"] --> RS["retrieved set"] --> J["journaled as<br/>memory.read effect"]
 ```
 
 | Store | Recall semantics |
@@ -116,10 +117,11 @@ must not re-derive.
 A write is the application of a `memory.committed` effect. When a write needs a
 computed artifact, that computation is **its own preceding journaled effect**:
 
-```text
-remember(fact, stores=[long_term, vector])
-   ├─ embed(fact)            → agent.completion/embedding effect (carries vector)   [journaled]
-   └─ memory.committed       → carries { fact, vector }; applied to Postgres + Qdrant [journaled]
+```mermaid
+flowchart TD
+    REM["remember(fact, stores=[long_term, vector])"]
+    REM --> EMB["embed(fact)<br/>→ agent.completion/embedding effect (carries vector) [journaled]"]
+    EMB --> COMMIT["memory.committed<br/>carries { fact, vector }; applied to Postgres + Qdrant [journaled]"]
 ```
 
 - **Embedding** is treated as a (possibly model-version-dependent) effect: the

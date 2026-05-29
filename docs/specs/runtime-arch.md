@@ -334,16 +334,24 @@ the Runtime, not a convention engines must remember.
 At Stage 1 of the Pod Evolution Model, a **Runtime Host** process hosts many
 logical Runtimes:
 
-```text
-   Kernel (control tier)
-      │ schedules / supervises / leases
-      ▼
-  ┌──────────────── Runtime Host A ────────────────┐   ┌──── Host B ────┐
-  │  Runtime(pod_1)  Runtime(pod_2)  Runtime(pod_3) │   │  Runtime(pod_4)│
-  │   each: own PodContext, own event loop, own     │   │                │
-  │         scoped capabilities (§12)               │   │                │
-  └─────────────────────────────────────────────────┘   └────────────────┘
+```mermaid
+flowchart TB
+    K["Kernel (control tier)"]
+    subgraph HostA["Runtime Host A"]
+        direction LR
+        R1["Runtime(pod_1)"]
+        R2["Runtime(pod_2)"]
+        R3["Runtime(pod_3)"]
+    end
+    subgraph HostB["Runtime Host B"]
+        R4["Runtime(pod_4)"]
+    end
+    K -- "schedules / supervises / leases" --> HostA
+    K -- "schedules / supervises / leases" --> HostB
 ```
+
+*Each Runtime has its own PodContext, event loop, and scoped capabilities
+(§12); co-located Runtimes never share a PodContext.*
 
 - The Kernel schedules Pods onto hosts, holds the single-ownership lease (§9),
   and handles pause/resume/migrate.

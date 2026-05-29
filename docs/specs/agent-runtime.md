@@ -32,26 +32,15 @@ through capabilities and journaled effects.
 
 A single `agent` step expands into a loop:
 
-```text
-  workflow `agent` step  ──input──►  Agent Runtime
-       │
-       ▼
-   assemble prompt  (system + shared context + retrieved memory + input + tool schemas)  §7
-       │
-       ▼
-   ┌────────────────────── tool-use loop ──────────────────────┐
-   │  turn N:  call model  ──► completion                       │  §9 (journaled)
-   │            │                                               │
-   │            ├─ no tool requests → FINAL answer ─────────────┼──► validate output §12
-   │            │                                               │
-   │            └─ tool requests → run tools (permitted) §10    │  §10 (journaled, idempotent)
-   │                 │ results fed back into next turn          │
-   │                 ▼                                          │
-   │            turn N+1 ...                                     │
-   └────────────────────────────────────────────────────────────┘
-       │
-       ▼
-   emit `agent.responded` (the capstone effect event)  ──result──► back to workflow step
+```mermaid
+flowchart TD
+    IN["workflow agent step"] -->|input| ASM["assemble prompt §7<br/>(system + shared context + retrieved memory + input + tool schemas)"]
+    ASM --> TURN["turn N: call model → completion<br/>§9 (journaled)"]
+    TURN -->|tool requests| TOOLS["run tools (permitted) §10<br/>(journaled, idempotent)"]
+    TOOLS -->|results fed into next turn| TURN
+    TURN -->|no tool requests| FINAL["FINAL answer → validate output §12"]
+    FINAL --> CAP["emit agent.responded<br/>(capstone effect event)"]
+    CAP -->|result| OUT["back to workflow step"]
 ```
 
 Internally this is itself a mini-orchestration. The next section explains why
@@ -97,12 +86,13 @@ never re-invoked on replay; their recorded outputs are replayed.
 Internal effects nest under the workflow `agent` step's effect origin
 (workflow §9):
 
-```text
-workflow agent step origin:   wf:lead_capture#greet@1
-  ├─ turn 1 model completion:  wf:lead_capture#greet@1 / turn:1            → agent.completion
-  ├─ tool call (turn 1):       wf:lead_capture#greet@1 / turn:1 / call:0   → tool.completed
-  ├─ turn 2 model completion:  wf:lead_capture#greet@1 / turn:2            → agent.completion
-  └─ FINAL:                    wf:lead_capture#greet@1                     → agent.responded
+```mermaid
+flowchart LR
+    ORIGIN["workflow agent step origin<br/>wf:lead_capture#greet@1"]
+    ORIGIN --> T1["…/turn:1<br/>→ agent.completion"]
+    ORIGIN --> C1["…/turn:1/call:0<br/>→ tool.completed"]
+    ORIGIN --> T2["…/turn:2<br/>→ agent.completion"]
+    ORIGIN --> FIN["(capstone) wf:lead_capture#greet@1<br/>→ agent.responded"]
 ```
 
 | Event | Category | When | Journaled? |
@@ -164,6 +154,14 @@ All agents in a Pod **share context, goals, memory, and tools** (domain-model
 - access to the **shared Memory** (within the agent's declared scope, §11);
 - the **shared tool vocabulary** (within the agent's permitted subset).
 
+**Version coherence (critical).** The identity, goals, and prompts injected are
+those of the **same `definition_version` the invoking workflow instance is
+pinned to** (workflow §14), *not* the Pod's current Definition. A run invoked by
+a long-lived, pinned instance sees that instance's vintage identity/goals — so
+it never executes an old plan under new goals. The Definition is one atomic
+pinned snapshot; the Agent Runtime reads identity/goals/prompts from it, never
+from live Definition.
+
 **Agents do not orchestrate agents (V1).** Control flow lives only in workflows
 (workflow §1). An agent cannot invoke another agent — a workflow composes them.
 This keeps determinism tractable and the system legible. Agent-to-agent
@@ -177,16 +175,21 @@ agent-planned workflows (workflow §18).
 The prompt is assembled deterministically from a **stable prefix** and a
 **variable suffix** — a split chosen deliberately for prompt caching:
 
-```text
-┌─ STABLE PREFIX (cacheable across invocations of this agent) ─┐
-│  system prompt (prompts/*.md)                                │
-│  Pod identity + goals (shared context, §6)                   │
-│  tool schemas (permitted tools)                              │
-├─ VARIABLE SUFFIX (per invocation) ───────────────────────────┤
-│  retrieved memory (journaled read, §11)                      │
-│  workflow step input                                          │
-│  prior turns' completions + tool results (the loop so far)    │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph PREFIX["STABLE PREFIX — cacheable across invocations of this agent"]
+        direction TB
+        P1["system prompt (prompts/*.md)"]
+        P2["Pod identity + goals (shared context, §6)"]
+        P3["tool schemas (permitted tools)"]
+    end
+    subgraph SUFFIX["VARIABLE SUFFIX — per invocation"]
+        direction TB
+        S1["retrieved memory (journaled read, §11)"]
+        S2["workflow step input"]
+        S3["prior turns' completions + tool results (the loop so far)"]
+    end
+    PREFIX --> SUFFIX
 ```
 
 - **Prompt caching is first-class.** Agents are invoked repeatedly with the same
@@ -211,6 +214,14 @@ The prompt is assembled deterministically from a **stable prefix** and a
 - **Retries:** transient model errors retry with backoff; each attempt is a
   distinct effect origin (`turn:N@attempt`), individually journaled, so replay
   is unambiguous.
+- **Per-run model pinning.** The concrete model version is resolved **once at run
+  start** and recorded (`agent.run.started`). Every turn of that run — including
+  turns issued live when a *partially-recorded* run **resumes** after a crash
+  (§13) — uses the pinned version. This prevents a behavioral shift mid-thought
+  when the platform's model is upgraded between a run's start and its resume:
+  in-flight runs finish on the model they began with; only *new* runs adopt the
+  new version. (Replay never invokes the model, §13, so it is already immune;
+  pinning closes the *resume* case.)
 - **Structured output:** final answers conform to the agent's `output.schema`
   (§12), typically via the provider's structured-output / tool mechanism so the
   workflow can branch on typed fields.
@@ -370,10 +381,11 @@ type ModelProvider interface {
   boundary (stream live, record once).
 - **Cache key derivation & invalidation** (§7) — exact stable-prefix hashing and
   how a Definition hot-reload (changed system prompt) invalidates caches.
-- **Model/version pinning across replay** — a recorded completion is replayed,
-  not regenerated, so model upgrades don't affect history; but *new* runs after
-  a model change behave differently. Whether to pin model versions per
-  `definition_version` is open.
+- **Model version *selection* policy** — per-run pinning (§8) resolves the
+  *resume* discontinuity (a run finishes on the model it began with). What
+  remains open is the *selection* policy: pin per `definition_version` (model
+  upgrades are an explicit, versioned Definition change) vs. float to "latest"
+  for new runs. The mechanism (record at run start) supports either.
 - **Long-context vs retrieval tradeoff** — how much memory to inline vs retrieve
   (§7, §10); resolve with the Memory System spec.
 - **Multi-model agents** — an agent using different models per turn (cheap

@@ -55,13 +55,11 @@ rewriting its Definition.
 Deployment is **declarative and reconciled**, in spirit like Kubernetes but
 deliberately **without its complexity** (Goals.md: "no Kubernetes complexity"):
 
-```text
-  Definition: deployment descriptors (desired)
-        │
-        ▼
-  Deployment Controller (Control tier) ── reconciles ──► actual hosted resources
-        │                                                       │
-        └──────────────── status ◄──────────────────────────────┘
+```mermaid
+flowchart LR
+    DESC["Definition:<br/>deployment descriptors (desired)"] --> CTRL["Deployment Controller<br/>(Control tier)"]
+    CTRL -- "reconciles" --> ACTUAL["actual hosted resources"]
+    ACTUAL -- "status" --> CTRL
 ```
 
 - **Desired** state is declared in the Definition plane (descriptors, §5).
@@ -134,14 +132,17 @@ usually authored. They become *explicit, dedicated* descriptors only at Stages
 Reconciliation tracks the Pod lifecycle (pod-spec §4) but is a **separate
 concern** (operational, not business):
 
-```text
-  Pod draft ─────────► no deployment (designing)
-  Pod provisioning ──► allocate namespaces + place Runtime + provision endpoints
-  Pod active ────────► frontend hosted, endpoints live, routes registered
-  Pod paused ────────► Runtime drained off the fleet; endpoints buffer (tool-runtime §7);
-                       frontend may serve last-rendered (read-only) or a paused notice
-  Pod archived ──────► endpoints deregistered, hosting torn down; namespaces retained
-                       (state preserved) or snapshotted out on export (memory §10)
+```mermaid
+flowchart TD
+    D["Pod draft"] --> P["Pod provisioning"]
+    P --> A["Pod active"]
+    A --> PA["Pod paused"]
+    PA --> AR["Pod archived"]
+    D -.- Dn["no deployment (designing)"]
+    P -.- Pn["allocate namespaces + place Runtime + provision endpoints"]
+    A -.- An["frontend hosted, endpoints live, routes registered"]
+    PA -.- PAn["Runtime drained off fleet; endpoints buffer (tool §7);<br/>frontend may serve last-rendered (read-only) or a paused notice"]
+    AR -.- ARn["endpoints deregistered, hosting torn down; namespaces retained<br/>(state preserved) or snapshotted out on export (memory §10)"]
 ```
 
 Updates are reconciled in place: a new Site Model version (frontend-renderer §4)

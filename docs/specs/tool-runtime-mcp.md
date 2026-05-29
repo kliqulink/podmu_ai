@@ -91,21 +91,14 @@ event type (event §5).
 
 When a workflow `tool` step or an agent tool call fires (workflow §9, agent §9):
 
-```text
-  effect origin (workflow §9 / agent §4)
-        │
-        ▼
-  1. journal check:  recorded result for this origin?
-        ├─ yes (replay) → return recorded result, NO provider call  (runtime §8)
-        └─ no  (live)   ▼
-  2. resolve binding → MCP server; acquire scoped credentials (secrets capability, runtime §12)
-  3. translate semantic action → MCP tool call → provider API
-        │   pass PROVIDER idempotency key (§5)
-        ▼
-  4. append `tool.completed` (or `tool.failed`) effect event   (event §2, large payloads → ref §6)
-        │
-        ▼
-  5. return result to caller (workflow step / agent turn)
+```mermaid
+flowchart TD
+    O["effect origin (workflow §9 / agent §4)"] --> J{"1. journal check:<br/>recorded result for this origin?"}
+    J -->|yes (replay)| REC["return recorded result,<br/>NO provider call (runtime §8)"]
+    J -->|no (live)| B["2. resolve binding → MCP server;<br/>acquire scoped credentials (runtime §12)"]
+    B --> T["3. translate semantic action → MCP tool call → provider API<br/>(pass PROVIDER idempotency key, §5)"]
+    T --> A["4. append tool.completed / tool.failed effect event<br/>(event §2; large payloads → ref §6)"]
+    A --> R["5. return result to caller (workflow step / agent turn)"]
 ```
 
 Replay never calls the provider (step 1) — it returns the journaled
@@ -155,19 +148,16 @@ risk a double charge.
 Ingress is the **one place** new external facts enter the deterministic system.
 It must be idempotent, authenticated, and correctly routed. Pipeline:
 
-```text
-  external delivery (webhook / MCP notification / poll)
-        │
-   1. RECEIVE at the edge gateway (Control tier)
-   2. AUTHENTICATE (verify webhook signature / MCP server identity)
-   3. ROUTE to a Pod: resolve provider identifier → pod_id (§8)
-   4. DEDUPE on idempotency_key (event §9) — BEFORE it becomes an event
-   5. NORMALIZE via the binding's ingress mapping → domain event
-        (emit type, correlation_key, envelope per event §4)
-   6. DELIVER to the owning Runtime, which APPENDS it (single-writer, runtime §9)
-        │
-        ▼
-   workflows triggered / waiting instances resumed (workflow §6)
+```mermaid
+flowchart TD
+    EXT["external delivery<br/>(webhook / MCP notification / poll)"]
+    EXT --> S1["1. RECEIVE at the edge gateway (Control tier)"]
+    S1 --> S2["2. AUTHENTICATE (verify webhook signature / MCP server identity)"]
+    S2 --> S3["3. ROUTE to a Pod: resolve provider identifier → pod_id (§8)"]
+    S3 --> S4["4. DEDUPE on idempotency_key (event §9) — BEFORE it becomes an event"]
+    S4 --> S5["5. NORMALIZE via the binding's ingress mapping → domain event<br/>(emit type, correlation_key, envelope per event §4)"]
+    S5 --> S6["6. DELIVER to the owning Runtime, which APPENDS it (single-writer, runtime §9)"]
+    S6 --> WF["workflows triggered / waiting instances resumed (workflow §6)"]
 ```
 
 Properties:
@@ -208,15 +198,15 @@ The egress↔ingress pairing models real business processes:
   as an **ingress event** the workflow waits on. The canonical example unifies
   both directions:
 
-```text
-  workflow:
-    - tool: payments.create_invoice     # EGRESS — returns invoice id (sync)
-        output: invoice
-    - wait:                              # then WAIT for the world to act
-        for: order.paid                  # INGRESS event (binding §3)
-        match: "{{ invoice.external_id }}"   # correlation (§6, workflow §6)
-        timeout: 72h
-        on_timeout: send_payment_reminder
+```yaml
+workflow:
+  - tool: payments.create_invoice      # EGRESS — returns invoice id (sync)
+    output: invoice
+  - wait:                              # then WAIT for the world to act
+      for: order.paid                  # INGRESS event (binding §3)
+      match: "{{ invoice.external_id }}"   # correlation (§6, workflow §6)
+      timeout: 72h
+      on_timeout: send_payment_reminder
 ```
 
 This is why egress and ingress live in one engine: a single business step
