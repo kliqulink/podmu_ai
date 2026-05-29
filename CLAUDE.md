@@ -37,8 +37,11 @@ go run ./cmd/podctl id                      # generate a fresh Pod id (ULID)
   naming/category rules, causal-chain construction via `New`/`Caused`),
   `log.go` (the `EventLog` interface + `MemLog`, an in-memory reference impl
   enforcing single-writer monotonic sequence, append-dedup by `event_id`, and
-  `ReadFrom` replay). Production `EventLog` will be a per-Pod NATS JetStream
-  stream behind the same interface (event §6, §13).
+  `ReadFrom` replay), `journal.go` (the `EffectJournal`: `EffectOrigin` keying,
+  `Recorded`/`Record`, and `Do` — the journaled-effect contract of runtime §8:
+  replay returns the recorded result and never re-executes `fn`). Production
+  `EventLog` will be a per-Pod NATS JetStream stream behind the same interface
+  (event §6, §13).
 - `internal/ulid/` — shared prefixed-ULID generation/validation used by both
   `pod_` and `event_` ids (domain-model §7).
 - `cmd/podctl/` — CLI over the pod package.

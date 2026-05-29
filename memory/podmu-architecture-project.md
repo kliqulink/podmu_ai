@@ -18,9 +18,11 @@ An external senior-architect review (`Feedback.md`, 2026-05-29) was triaged. Mos
 **IMPLEMENTATION STARTED (2026-05-30).** Go module `github.com/kliqulink/podmu_ai`, Go 1.26, dep = yaml.v3 only.
 - spec 1 DONE: `pod/` = manifest types + bundle loader/validator + runtime compatibility handshake; `cmd/podctl/` CLI (validate/info/id); sample bundle in `pod/testdata/`.
 - ULID logic factored into `internal/ulid/` (shared by pod_ and event_ ids).
-- spec 4 (event log) IN PROGRESS: `event/` = `Envelope` (naming/category rules, causal-chain via New/Caused) + `EventLog` interface + `MemLog` in-memory impl (single-writer monotonic sequence, append-dedup by event_id, ReadFrom replay). Production EventLog = per-Pod NATS JetStream stream behind same interface (NOT yet built — needs nats.go dep + running server; deferred).
-- All tests green (pod, event, ulid). Note: `-race` unavailable here (no gcc/cgo on this Windows box) — MemLog is mutex-guarded, concurrency test passes.
-Next build targets: JetStream-backed EventLog (real infra); EffectJournal index (lookup recorded effect by effect_origin, runtime §8); workflow instance/replay (spec 5). Strategic "self-optimizing behavior" spec still unwritten.
+- spec 4 (event log) DONE: `event/` = `Envelope` (naming/category, causal-chain via New/Caused) + `EventLog`/`MemLog` (single-writer monotonic sequence, append-dedup, ReadFrom replay) + `Journal` (EffectJournal: `EffectOrigin` keying + nesting, `Recorded`/`Record`, and `Do` = the runtime §8 journaled-effect contract: replay returns recorded result, fn never re-executes; index is a projection rebuilt from log via `Rebuild`).
+- Production EventLog = per-Pod NATS JetStream stream behind same interface — NOT yet built (needs nats.go dep + running server; deferred).
+- All tests green (pod, event incl. journal, ulid). Note: `-race` unavailable here (no gcc/cgo on this Windows box) — MemLog/Journal are mutex-guarded.
+Pushed through a7de546; journal commit pending.
+Next build targets: workflow instance + replay skeleton (spec 5, consumes events + Journal.Do); JetStream-backed EventLog (real infra); FileLog (NDJSON, for thick-bundle state/events/log.ndjson). Strategic "self-optimizing behavior" spec still unwritten.
 
 **Two cross-cutting concerns still scattered as "Deferred" notes:**
 - **Data governance / PII** — right-to-erasure vs immutable log (crypto-shredding); marketplace export sanitization. memory §14, tool-runtime §14, frontend §13. Legally load-bearing. (Folds into State-Plane Governance spec above.)
