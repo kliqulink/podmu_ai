@@ -24,6 +24,9 @@ prior ones; read in this order:
 9. `docs/specs/frontend-renderer.md` — projection; render-read / interact-emit; a channel
 10. `docs/specs/deployment.md` — materialization + the Stage 1→2→3 evolution seam
 11. `docs/specs/governance-hitl.md` — cross-cutting: hard policy constraints + human intervention (Governor & HITL)
+12. `docs/specs/kernel-fencing.md` — single-writer safety: leases + epoch fencing tokens enforced at the data tier
+13. `docs/specs/state-plane-governance.md` — PII crypto-shredding, snapshot cadence, cold tiering, portability boundary
+14. `docs/specs/marketplace-tool-trust.md` — third-party MCP trust: tiers, signed manifests, brokered egress, revocation
 
 **The one principle threading every layer:** *nondeterminism is pushed to the
 edge and journaled; everything else is a deterministic projection of an

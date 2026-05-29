@@ -13,7 +13,7 @@ As of 2026-05-29, the **V1 spec set is complete** in `docs/` (11 specs, see [CLA
 
 An external senior-architect review (`Feedback.md`, 2026-05-29) was triaged. Most points were already in "Deferred" notes; three were genuine: (1) **HITL/Governance gap** → addressed by new spec `docs/specs/governance-hitl.md`; (2) **context smuggling** — a real inconsistency, fixed: `definition_version` now pins the WHOLE Definition projection (graph + identity + goals + prompts + tools) atomically, not just the graph (workflow §14, agent §6); (3) **resume model-shift** — fixed via per-run model pinning (agent §8).
 
-**Open spec backlog from the review** (write next, in order): Kernel Fencing & Lease Management (split-writer safety, runtime §9/§17); State-Plane Governance (PII erasure via crypto-shredding + cold-state tiering + snapshot cadence + thick/thin portability boundary); Marketplace Tool Trust (third-party MCP signing, tool §14).
+**Review-driven spec backlog: ALL DONE.** Specs 11–14 written: governance-hitl, kernel-fencing, state-plane-governance, marketplace-tool-trust (`docs/specs/`). Marketplace centerpiece = brokered egress (untrusted MCP servers never hold credentials; trusted host makes the authenticated call). Full set is now 14 specs. Next natural step: begin implementation (start with Pod manifest + Bundle loader/validator in Go, the dependency-root) OR the strategic "self-optimizing behavior" spec.
 
 **Two cross-cutting concerns still scattered as "Deferred" notes:**
 - **Data governance / PII** — right-to-erasure vs immutable log (crypto-shredding); marketplace export sanitization. memory §14, tool-runtime §14, frontend §13. Legally load-bearing. (Folds into State-Plane Governance spec above.)
